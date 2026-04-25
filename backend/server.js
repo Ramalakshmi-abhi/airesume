@@ -24,26 +24,29 @@ app.use(cors({ origin: "*" }));
 app.use(express.json({ limit: "10mb" }));
 app.use("/uploads", express.static("uploads"));
 
-// Global Request Logger
+// Global Request Logger & API Prefix Stripper
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  if (req.url.startsWith('/api')) {
+    req.url = req.url.replace('/api', '');
+  }
   next();
 });
 
 // Routes
-app.use("/api/upload", uploadRouter);
-app.use("/api/analyze", analyzeRouter);
-app.use("/api/match-job", matchRouter);
-app.use("/api/rewrite", rewriteRouter);
-app.use("/api/history", historyRouter);
-app.use("/api/chat", chatRouter);
-app.use("/api/roadmap", roadmapRouter);
-app.use("/api/interview-prep", interviewRouter);
+app.use("/upload", uploadRouter);
+app.use("/analyze", analyzeRouter);
+app.use("/match-job", matchRouter);
+app.use("/rewrite", rewriteRouter);
+app.use("/history", historyRouter);
+app.use("/chat", chatRouter);
+app.use("/roadmap", roadmapRouter);
+app.use("/interview-prep", interviewRouter);
 
 import { downloadFileNative } from "./controllers/analyzeController.js";
 
-app.get("/api/download-file", downloadFileNative);
-app.get("/api/health", (req, res) => res.json({ status: "ok", time: new Date().toISOString() }));
+app.get("/download-file", downloadFileNative);
+app.get("/health", (req, res) => res.json({ status: "ok", time: new Date().toISOString() }));
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
