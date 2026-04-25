@@ -3,7 +3,7 @@ import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Tabl
 import path, { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
-import { db } from "../config/firebase.js";
+import admin, { db } from "../config/firebase.js";
 import pdf from "pdf-parse";
 import mammoth from "mammoth";
 import axios from "axios";
@@ -61,13 +61,21 @@ export const analyzeResume = async (req, res) => {
   try {
     let resumeText = text || "";
     if (fileUrl && !resumeText) {
-      logDebug(`📂 Resolving local file from URL: ${fileUrl}`);
-      const localFileName = decodeURIComponent(fileUrl.split('/').pop());
-      const localFilePath = join(__dirname, '..', 'uploads', localFileName);
-      
-      if (fs.existsSync(localFilePath)) {
-        logDebug(`📖 Reading file: ${localFilePath}`);
-        const buffer = fs.readFileSync(localFilePath);
+      let buffer;
+      if (fileUrl.startsWith('http')) {
+        logDebug(`🌐 Fetching cloud file: ${fileUrl}`);
+        const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
+        buffer = Buffer.from(response.data);
+      } else {
+        logDebug(`📂 Resolving local file: ${fileUrl}`);
+        const localFileName = decodeURIComponent(fileUrl.split('/').pop());
+        const localFilePath = join(__dirname, '..', 'uploads', localFileName);
+        if (fs.existsSync(localFilePath)) {
+          buffer = fs.readFileSync(localFilePath);
+        }
+      }
+
+      if (buffer) {
         if (filename?.toLowerCase().endsWith('.pdf')) {
           logDebug("📄 Parsing PDF...");
           const pdfData = await pdf(buffer);
@@ -79,6 +87,7 @@ export const analyzeResume = async (req, res) => {
         }
       }
     }
+
 
     const startTime = Date.now();
     logDebug(`📊 Text extraction complete. Length: ${resumeText.length}`);
@@ -487,12 +496,18 @@ export const downloadResume = async (req, res) => {
 
     const buffer = await Packer.toBuffer(doc);
     const fileName = `Updated_Resume_${Date.now()}.docx`;
-    const filePath = join(__dirname, '..', 'uploads', fileName);
     
-    await fs.promises.writeFile(filePath, buffer);
-    const fileUrl = `http://localhost:5005/download-file?name=${fileName}`;
-    
+    // Upload to Firebase Storage
+    const bucket = admin.storage().bucket();
+    const file = bucket.file(`generated/${fileName}`);
+    await file.save(buffer, {
+      metadata: { contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
+      public: true
+    });
+
+    const fileUrl = `https://storage.googleapis.com/${bucket.name}/generated/${fileName}`;
     res.json({ success: true, url: fileUrl });
+
   } catch (err) {
     console.error("Download Error:", err);
     res.status(500).json({ error: "Failed to generate Word document" });
