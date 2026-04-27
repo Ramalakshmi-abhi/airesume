@@ -19,8 +19,12 @@
       "destination": "/backend/server.js"
     },
     {
+      "source": "/(.*\\.(js|css|png|jpg|svg|ico|json|wasm))$",
+      "destination": "/$1"
+    },
+    {
       "source": "/((?!api/).*)",
-      "destination": "/frontend/index.html"
+      "destination": "/index.html"
     }
   ]
 }
