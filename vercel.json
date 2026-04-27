@@ -18,14 +18,13 @@
       "source": "/api/(.*)",
       "destination": "/backend/server.js"
     },
-    { "handle": "filesystem" },
     {
       "source": "/assets/(.*)",
-      "destination": "/assets/$1" 
+      "destination": "/frontend/assets/$1" 
     },
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "source": "/((?!api/).*)",
+      "destination": "/frontend/index.html"
     }
   ]
 }
